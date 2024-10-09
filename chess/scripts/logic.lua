@@ -3,10 +3,20 @@ require("chess.scripts.hitbox")
 
 A, B, C, D, E, F, G, H = "A", "B", "C", "D", "E", "F", "G", "H"
 
+pieceNotation = {
+  pawn = { symbol = "♟", letter = "" },
+  rook = { symbol = "♜", letter = "R" },
+  knight = { symbol = "♞", letter = "N" },
+  bishop = { symbol = "♝", letter = "B" },
+  queen = { symbol = "♚", letter = "Q" },
+  king = { symbol = "♛", letter = "K" },
+}
+
 chessPieces = {}                                                                -- {UUID = {piece = "pawn", color = "white"}} Contains the data of every piece in no particular order according to their UUID
 takenPiecesWhite, takenPiecesBlack = {}, {}
 chessIndex = { A = {}, B = {}, C = {}, D = {}, E = {}, F = {}, G = {}, H = {} } -- {[A] = {[1] = UUID}} Square table of piece UUIDs according to their position on the board
 
+-- This should never change and is strictly used for setting up the board
 chessTable = {
   [8] = { "Br", "Bn", "Bi", "Bq", "Bk", "Bi", "Bn", "Br" }, -- A8 to H8
   [7] = { "Bp", "Bp", "Bp", "Bp", "Bp", "Bp", "Bp", "Bp" },
@@ -60,11 +70,11 @@ for row, list in pairs(chessTable) do
 end
 
 initializePieces()
-
+pings.move(1, 1, 7, 7)
 
 function events.tick()
   for _, player in pairs(world:getPlayers()) do
-    if player:getName() == "BitslaynAlt" then
+    if player:getName() == "Bitslayn" then
       if host:isHost() then
         doRaycast(player) -- Runs raycast returning hitbox variable
       end
