@@ -1,4 +1,4 @@
-require("chess.scripts.modelFunctions")
+require("chess.scripts.functions")
 require("chess.scripts.hitbox")
 
 A, B, C, D, E, F, G, H = "A", "B", "C", "D", "E", "F", "G", "H"
@@ -12,6 +12,7 @@ pieceNotation = {
   king = { symbol = "♛", letter = "K" },
 }
 
+selected = nil
 chessPieces = {}                                                                -- {UUID = {piece = "pawn", color = "white"}} Contains the data of every piece in no particular order according to their UUID
 takenPiecesWhite, takenPiecesBlack = {}, {}
 chessIndex = { A = {}, B = {}, C = {}, D = {}, E = {}, F = {}, G = {}, H = {} } -- {[A] = {[1] = UUID}} Square table of piece UUIDs according to their position on the board
@@ -28,7 +29,7 @@ chessTable = {
 for row, list in pairs(chessTable) do
   for column, piece in pairs(list) do
     local a, b, c, d = client:generateUUID()
-    local UUID = client.intUUIDToString(a, b, c, d)
+    local uuid = client.intUUIDToString(a, b, c, d)
     local p, t
 
     -- Read piece
@@ -53,8 +54,8 @@ for row, list in pairs(chessTable) do
       t = "black"
     end
 
-    chessIndex[string.char(row + 64)][column] = UUID
-    chessPieces[UUID] = {
+    chessIndex[string.char(row + 64)][column] = uuid
+    chessPieces[uuid] = {
       piece = p,
       color = t,
 
@@ -70,17 +71,19 @@ for row, list in pairs(chessTable) do
 end
 
 initializePieces()
-pings.move(1, 1, 7, 7)
 
 function events.tick()
   for _, player in pairs(world:getPlayers()) do
+    -- Player whose turn it is
     if player:getName() == "Bitslayn" then
       if host:isHost() then
         doRaycast(player) -- Runs raycast returning hitbox variable
       end
       if player:getSwingTime() == 1 and (hitbox.x or hitbox.z) then
-        if chessIndex[string.char(hitbox.x + 64)][hitbox.z] then
-          take(chessIndex[string.char(hitbox.x + 64)][hitbox.z])
+        if selected and not chessIndex[string.char(hitbox.x + 64)][hitbox.z] then
+          pings.move(selected["x"], selected["z"], hitbox.x, hitbox.z)
+        else
+          pings.select(hitbox.x, hitbox.z)
         end
       end
     end

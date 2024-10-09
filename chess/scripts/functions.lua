@@ -61,11 +61,19 @@ function take(uuid)
   end
 end
 
----@param x number
----@param z number
----@param dx number
----@param dz number
+-- ---@param x number
+-- ---@param z number
+-- ---@param dx number
+-- ---@param dz number
+-- function move(x, z, dx, dz)
+--   pings.move(string.char(x * 8 + z - 9), string.char(dx * 8 + dz - 9))
+-- end
+
+-- ----@param from string
+-- ----@param to string
 function pings.move(x, z, dx, dz)
+  -- local x, z, dx, dz
+
   -- Piece that's moving
   local uuid = chessIndex[string.char(x + 64)][z]
   -- Piece in destination
@@ -75,18 +83,38 @@ function pings.move(x, z, dx, dz)
       -- If there's a piece in destination, take
       take(existing)
       print(pieceNotation[chessPieces[uuid].piece].symbol ..
-      " " .. pieceNotation[chessPieces[uuid].piece].letter .. "x" .. string.char(dx + 97) .. dz)
+        " " .. pieceNotation[chessPieces[uuid].piece].letter .. "x" .. string.char(dx + 97) .. dz)
     else
       print(pieceNotation[chessPieces[uuid].piece].symbol ..
-      " " .. pieceNotation[chessPieces[uuid].piece].letter .. string.char(dx + 97) .. dz)
+        " " .. pieceNotation[chessPieces[uuid].piece].letter .. string.char(dx + 97) .. dz)
     end
     -- Clear last position
     chessIndex[string.char(x + 64)][z] = nil
     -- Move piece to new space
     chessIndex[string.char(dx + 64)][dz] = uuid
     c.board[uuid]:setPos(vec(dx, 0, dz) * 8)
-    -- Play sound :3 TODO fix pos to piece destination pos cause I'm a little stoopid
-    sounds:playSound("minecraft:block.wood.place", c.board:getPos(), 0.5, 2)
-    sounds:playSound("minecraft:block.wooden_button.click_on", c.board:getPos(), 0.5, 2)
+    -- Sets piece as moved
+    chessPieces[uuid].hasMoved = true
+    -- Play sounds :3
+    sounds:playSound("minecraft:block.wood.place", c.board[uuid]:partToWorldMatrix()[4].xyz, 0.5, 2)
+    sounds:playSound("minecraft:block.wooden_button.click_on", c.board[uuid]:partToWorldMatrix()[4].xyz, 0.5, 2)
+
+    -- Pawn promotion
+    if chessPieces[uuid].piece == "pawn" and chessPieces[uuid].hasMoved == true and (dx == 1 or dx == 8) then
+      print("Pawn promoting!")
+    end
+  end
+end
+
+---@param x number
+---@param z number
+function pings.select(x, z)
+  uuid = chessIndex[string.char(x + 64)][z]
+  if x and z and uuid then
+    selected = {["x"] = x, ["z"] = z}
+    print("Selected " .. chessPieces[uuid].color .. " " .. chessPieces[uuid].piece .. " at " .. string.char(x + 64) .. z)
+  else
+    selected = nil
+    print("Deselected")
   end
 end
