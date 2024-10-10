@@ -1,0 +1,9 @@
+Board texture made out of sprites and players can select the textures
+Floaty pieces using animations
+Loom sound or sumn for dragging a piece
+Picking up and placing the board acting like an item with action wheel button to turn board into an item/put it into hand to place down
+A book item to show stats instead of the sidebar?
+Hovering pieces for the pawn promotion with hitboxes
+Hitboxes processed clientside, showing a :loading: emoji above hitbox if the hitbox isn't the same as the pinged one
+Resizeable board
+Undo, resign, save if one or both players leave, prompt load if both players queue to start a match (maybe persist up to 3 save slots?)

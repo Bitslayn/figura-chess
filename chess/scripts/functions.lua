@@ -100,7 +100,7 @@ function pings.move(x, z, dx, dz)
     sounds:playSound("minecraft:block.wooden_button.click_on", c.board[uuid]:partToWorldMatrix()[4].xyz, 0.5, 2)
 
     -- Pawn promotion
-    if chessPieces[uuid].piece == "pawn" and chessPieces[uuid].hasMoved == true and (dx == 1 or dx == 8) then
+    if chessPieces[uuid].piece == "pawn" and (dx == 1 or dx == 8) then
       print("Pawn promoting!")
     end
   end

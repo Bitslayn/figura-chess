@@ -13,6 +13,7 @@ pieceNotation = {
 }
 
 selected = nil
+colorTurn = "white"
 chessPieces = {}                                                                -- {UUID = {piece = "pawn", color = "white"}} Contains the data of every piece in no particular order according to their UUID
 takenPiecesWhite, takenPiecesBlack = {}, {}
 chessIndex = { A = {}, B = {}, C = {}, D = {}, E = {}, F = {}, G = {}, H = {} } -- {[A] = {[1] = UUID}} Square table of piece UUIDs according to their position on the board
@@ -80,10 +81,18 @@ function events.tick()
         doRaycast(player) -- Runs raycast returning hitbox variable
       end
       if player:getSwingTime() == 1 and (hitbox.x or hitbox.z) then
-        if selected and not chessIndex[string.char(hitbox.x + 64)][hitbox.z] then
-          pings.move(selected["x"], selected["z"], hitbox.x, hitbox.z)
-        else
-          pings.select(hitbox.x, hitbox.z)
+        -- If there's a piece selected
+        if selected then
+          -- If the hitbox is on an empty space 
+          if not chessIndex[string.char(hitbox.x + 64)][hitbox.z] then
+            pings.move(selected["x"], selected["z"], hitbox.x, hitbox.z)
+          else
+            -- Piece not selected and space isn't empty
+            -- Make sure the hitbox is over a piece that can be selected
+            if chessPieces[chessIndex[string.char(hitbox.x + 64)][hitbox.z]].color == colorTurn then
+              pings.select(hitbox.x, hitbox.z)
+            end
+          end
         end
       end
     end

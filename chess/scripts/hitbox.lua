@@ -108,12 +108,22 @@ end
 -- #ENDREGION
 
 
--- TODO Write docs
+-- Runs all the time, on host, detecting if the host is looking at the board's edge. Shows hitbox to host when moving the board and lets the host place it back down.
 -- #REGION Edge hitbox
 isMovingBoard, canPlaceBoard = nil, nil
+movingCooldown = 0
 
+-- Fixes placing and picking up board on the same frame
 function events.tick()
+  if movingCooldown > 0 then
+    movingCooldown = movingCooldown - 1
+  end
+end
+
+-- Render event for raycasting and hitbox position
+function events.render(delta)
   for _, player in pairs(world:getPlayers()) do
+    -- Checks if host, if not then break
     if player:getName() == client:getViewer():getName() and player:getName() == "Bitslayn" then
       -- #REGION Raycast
       local isHovering = false
@@ -121,7 +131,7 @@ function events.tick()
       local boardPos = c.board:getPos() / 16
       local boardAngle = c.board:getRot()
 
-      local eyePos = player:getPos() + vec(0, player:getEyeHeight(), 0)
+      local eyePos = player:getPos(delta) + vec(0, player:getEyeHeight(), 0)
       local eyeEnd = eyePos + (player:getLookDir() * 4.5)
 
       -- Absolute board corner coordinates
@@ -149,16 +159,21 @@ function events.tick()
       local _, hitPos = raycast:aabb(eyePos, eyeEnd, hitLocation)
 
       local localHitPos
-      local x, z
+      -- local x, z
       if hitPos then
         localHitPos = vectors.rotateAroundAxis(-boardAngle.y, hitPos - boardPos, vec(0, 1, 0))
-        x, z = math.floor((localHitPos.x + 2) * 2) + 1, math.floor((localHitPos.z + 2) * 2) + 1
+        -- Wtf was this for?
+        -- x, z = math.floor((localHitPos.x + 2) * 2) + 1, math.floor((localHitPos.z + 2) * 2) + 1
       end
 
       if localHitPos then
+        -- Detect if player is looking at an entity
         local entity = player:getTargetedEntity()
-        local block = player:getTargetedBlock()
-        if -2.25 < localHitPos.x and localHitPos.x < 2.25 and -2.25 < localHitPos.z and localHitPos.z < 2.25 and (hitbox.x == nil and hitbox.z == nil) and (not entity or not block) then
+        -- Detect if player is hovering over the edges
+        if ((-2.25 < localHitPos.x and localHitPos.x < -2) or
+              (2 < localHitPos.x and localHitPos.x < 2.25) or
+              (-2.25 < localHitPos.z and localHitPos.z < -2) or
+              (2 < localHitPos.z and localHitPos.z < 2.25)) and not entity then
           isHovering = true
         else
           isHovering = false
@@ -167,6 +182,7 @@ function events.tick()
       -- #ENDREGION
 
       -- #REGION Board moving
+      -- I need to write this better, it fixed *something* iirc
       if isMovingBoard == nil or canPlaceBoard == nil then
         isMovingBoard = false
         canPlaceBoard = false
@@ -174,8 +190,9 @@ function events.tick()
       if isMovingBoard == false then
         c.boardHitbox:setVisible(isHovering)
         c.boardHitbox:setPos(c.board:getPos()):setRot(c.board:getRot())
-        if player:getSwingTime() == 1 and player:getPose() == "CROUCHING" and isHovering then
+        if player:getSwingTime() == 1 and player:getPose() == "CROUCHING" and isHovering and movingCooldown == 0 then
           isMovingBoard = true
+          movingCooldown = 1
         end
       else
         c.boardHitbox:setVisible(true)
@@ -185,7 +202,7 @@ function events.tick()
         if player:getPose() == "CROUCHING" then
           c.boardHitbox:setRot(vec(0, -player:getRot().y, 0)):setPos(movingHitPos * 16)
         else
-          c.boardHitbox:setRot(vec(0, -math.round(player:getRot().y / 22.5) * 22.5, 0)):setPos(
+          c.boardHitbox:setRot(vec(0, -math.round(player:getRot(delta).y / 22.5) * 22.5, 0)):setPos(
             math.round(movingHitPos.x * 2) * 8,
             math.round(movingHitPos.y * 2) * 8,
             math.round(movingHitPos.z * 2) * 8
@@ -198,7 +215,7 @@ function events.tick()
           c.boardHitbox:setColor(1, 0, 0)
           canPlaceBoard = false
         end
-        if player:getSwingTime() == 1 and canPlaceBoard == true then
+        if player:getSwingTime() == 1 and canPlaceBoard == true and movingCooldown == 0 then
           pings.board(
             math.round((c.boardHitbox:getPos().x / 16) * 100),
             math.round((c.boardHitbox:getPos().y / 16) * 100),
@@ -206,25 +223,55 @@ function events.tick()
             math.round(math.fmod(c.boardHitbox:getRot().y - 90, 360))
           )
           isMovingBoard = false
+          movingCooldown = 1
         end
       end
       -- #ENDREGION
+    else
+      break
     end
   end
 end
 
 -- #REGION Ping
+
+-- Ping for moving the board and setting its rotation
 ---@param x number
 ---@param y number
 ---@param z number
 ---@param rot number
 function pings.board(x, y, z, rot)
+  -- Set the chessboard position and rotation
   c.board:setPos(vec(x, y, z) / 100 * 16):setRot(vec(0, rot, 0))
+  -- Save to config
+  config:setName("Chess"):save("position", vec(x, y, z))
+  config:setName("Chess"):save("rotation", rot)
+end
+
+-- Reping the chessboard position and rotation every 20 seconds
+if host:isHost() then
+  local repingTimer = 0
+  local repingDelay = 400
+  function events.tick()
+    if repingTimer > 0 then
+      repingTimer = repingTimer - 1
+      return
+    end
+    repingTimer = repingDelay
+    -- Load from config
+    local chessBoardConfig = {
+      position = config:setName("Chess"):load("position") or vec(0, 0, 0),
+      rotation = config:setName("Chess"):load("rotation") or 0,
+    }
+    -- Ping from values from config
+    pings.board(
+      chessBoardConfig.position.x,
+      chessBoardConfig.position.y,
+      chessBoardConfig.position.z,
+      chessBoardConfig.rotation
+    )
+  end
 end
 
 -- #ENDREGION
 -- #ENDREGION
-
-return {
-  doRaycast = doRaycast,
-}
