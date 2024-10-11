@@ -97,7 +97,8 @@ function pings.move(x, z, dx, dz)
     chessPieces[uuid].hasMoved = true
     -- Play sounds :3
     sounds:playSound("minecraft:block.wood.place", c.board[uuid]:partToWorldMatrix()[4].xyz, 0.5, 2)
-    sounds:playSound("minecraft:block.wooden_button.click_on", c.board[uuid]:partToWorldMatrix()[4].xyz, 0.5, 2)
+    sounds:playSound("minecraft:block.wooden_button.click_on",
+      c.board[uuid]:partToWorldMatrix()[4].xyz, 0.5, 2)
 
     -- Pawn promotion
     if chessPieces[uuid].piece == "pawn" and (dx == 1 or dx == 8) then
@@ -106,15 +107,22 @@ function pings.move(x, z, dx, dz)
   end
 end
 
----@param x number
----@param z number
+---@param x number?
+---@param z number?
 function pings.select(x, z)
-  uuid = chessIndex[string.char(x + 64)][z]
-  if x and z and uuid then
-    selected = {["x"] = x, ["z"] = z}
-    print("Selected " .. chessPieces[uuid].color .. " " .. chessPieces[uuid].piece .. " at " .. string.char(x + 64) .. z)
+  if x and z then
+    uuid = chessIndex[string.char(x + 64)][z]
+    if uuid then
+      selected = vec(x, 0, z)
+      print("Selected " ..
+        chessPieces[uuid].color ..
+        " " .. chessPieces[uuid].piece .. " at " .. string.char(x + 64) .. z)
+    else
+      selected = vec(0, 0, 0)
+      print("Deselected")
+    end
   else
-    selected = nil
+    selected = vec(0, 0, 0)
     print("Deselected")
   end
 end

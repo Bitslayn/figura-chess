@@ -12,7 +12,7 @@ pieceNotation = {
   king = { symbol = "♛", letter = "K" },
 }
 
-selected = nil
+selected = vec(0, 0, 0)
 colorTurn = "white"
 chessPieces = {}                                                                -- {UUID = {piece = "pawn", color = "white"}} Contains the data of every piece in no particular order according to their UUID
 takenPiecesWhite, takenPiecesBlack = {}, {}
@@ -80,18 +80,19 @@ function events.tick()
       if host:isHost() then
         doRaycast(player) -- Runs raycast returning hitbox variable
       end
+      -- Piece moving/selection logic
       if player:getSwingTime() == 1 and (hitbox.x or hitbox.z) then
-        -- If there's a piece selected
-        if selected then
-          -- If the hitbox is on an empty space 
-          if not chessIndex[string.char(hitbox.x + 64)][hitbox.z] then
-            pings.move(selected["x"], selected["z"], hitbox.x, hitbox.z)
+        if selected and not chessIndex[string.char(hitbox.x + 64)][hitbox.z] or chessPieces[chessIndex[string.char(hitbox.x + 64)][hitbox.z]].color ~= colorTurn then
+          -- Run if there's a piece selected, and the highlighted space is either an enemy piece or empty
+          pings.move(selected.x, selected.z, hitbox.x, hitbox.z)
+        elseif chessPieces[chessIndex[string.char(hitbox.x + 64)][hitbox.z]].color == colorTurn then
+          -- Run if highlighting a friendly piece
+          if hitbox.x == selected.x and hitbox.z == selected.z then
+            -- If the selected piece is selected twice, deselect
+            pings.select()
           else
-            -- Piece not selected and space isn't empty
-            -- Make sure the hitbox is over a piece that can be selected
-            if chessPieces[chessIndex[string.char(hitbox.x + 64)][hitbox.z]].color == colorTurn then
-              pings.select(hitbox.x, hitbox.z)
-            end
+            -- If the highlighted piece is a different friendly piece, select that piece instead (If no piece selected, select this piece)
+            pings.select(hitbox.x, hitbox.z)
           end
         end
       end

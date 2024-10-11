@@ -11,6 +11,7 @@ rateLimit = 4
 function doRaycast(player)
   local boardPos = c.board:getPos() / 16
   local boardAngle = c.board:getRot()
+  local boardScale = c.board:getScale()[1]
 
   local eyePos = player:getPos() + vec(0, player:getEyeHeight(), 0)
   local eyeEnd = eyePos + (player:getLookDir() * 4.5)
@@ -33,20 +34,21 @@ function doRaycast(player)
   -- aabb bounding box
   local hitLocation = {
     {
-      vec(minX, 0, minZ) + boardPos,
-      vec(maxX, 0.109375, maxZ) + boardPos,
+      (vec(minX, 0, minZ) * boardScale) + boardPos,
+      (vec(maxX, 0.109375, maxZ) * boardScale) + boardPos,
     },
   }
   local aabb, hitPos, side = raycast:aabb(eyePos, eyeEnd, hitLocation)
 
   if hitPos ~= nil then
     local localHitPos = vectors.rotateAroundAxis(-boardAngle.y, hitPos - boardPos, vec(0, 1, 0))
-    local x, z = math.floor((localHitPos.x + 2) * 2) + 1, math.floor((localHitPos.z + 2) * 2) + 1
+    local x, z =
+        math.floor((localHitPos.x + 2 * boardScale) * 2 / boardScale) + 1,
+        math.floor((localHitPos.z + 2 * boardScale) * 2 / boardScale) + 1
 
     local entity = player:getTargetedEntity()
-    local block = player:getTargetedBlock()
 
-    if not entity and (not block or block:getPos().y < boardPos.y) and (0 < x and x < 9 and 0 < z and z < 9) then
+    if not entity and (0 < x and x < 9 and 0 < z and z < 9) then
       if side == "up" and hitPos then
         raycastBox = { x, z }
       end
@@ -123,13 +125,14 @@ end
 -- Render event for raycasting and hitbox position
 function events.render(delta)
   for _, player in pairs(world:getPlayers()) do
-    -- Checks if host, if not then break
+    -- Checks if host
     if player:getName() == client:getViewer():getName() and player:getName() == "Bitslayn" then
       -- #REGION Raycast
       local isHovering = false
 
       local boardPos = c.board:getPos() / 16
       local boardAngle = c.board:getRot()
+      local boardScale = c.board:getScale()[1]
 
       local eyePos = player:getPos(delta) + vec(0, player:getEyeHeight(), 0)
       local eyeEnd = eyePos + (player:getLookDir() * 4.5)
@@ -152,8 +155,8 @@ function events.render(delta)
       -- aabb bounding box
       local hitLocation = {
         {
-          vec(minX, 0, minZ) + boardPos,
-          vec(maxX, 0, maxZ) + boardPos,
+          (vec(minX, 0, minZ) * boardScale) + boardPos,
+          (vec(maxX, 0, maxZ) * boardScale) + boardPos,
         },
       }
       local _, hitPos = raycast:aabb(eyePos, eyeEnd, hitLocation)
@@ -170,10 +173,10 @@ function events.render(delta)
         -- Detect if player is looking at an entity
         local entity = player:getTargetedEntity()
         -- Detect if player is hovering over the edges
-        if ((-2.25 < localHitPos.x and localHitPos.x < -2) or
-              (2 < localHitPos.x and localHitPos.x < 2.25) or
-              (-2.25 < localHitPos.z and localHitPos.z < -2) or
-              (2 < localHitPos.z and localHitPos.z < 2.25)) and not entity then
+        if ((-2.25 * boardScale < localHitPos.x and localHitPos.x < -2 * boardScale) or
+              (2 * boardScale < localHitPos.x and localHitPos.x < 2.25 * boardScale) or
+              (-2.25 * boardScale < localHitPos.z and localHitPos.z < -2 * boardScale) or
+              (2 * boardScale < localHitPos.z and localHitPos.z < 2.25 * boardScale)) and not entity then
           isHovering = true
         else
           isHovering = false
@@ -189,22 +192,24 @@ function events.render(delta)
       end
       if isMovingBoard == false then
         c.boardHitbox:setVisible(isHovering)
-        c.boardHitbox:setPos(c.board:getPos()):setRot(c.board:getRot())
+        c.boardHitbox:setPos(c.board:getPos()):setRot(c.board:getRot()):setScale(c.board:getScale())
         if player:getSwingTime() == 1 and player:getPose() == "CROUCHING" and isHovering and movingCooldown == 0 then
           isMovingBoard = true
           movingCooldown = 1
         end
       else
         c.boardHitbox:setVisible(true)
-        local _, movingHitPos, side = raycast:block(eyePos, eyePos + (player:getLookDir() * 8),
-          "OUTLINE",
-          "NONE")
+        local _, movingHitPos, side = raycast:block(
+          eyePos, eyePos + (player:getLookDir() * 16),
+          "OUTLINE", "NONE"
+        )
         if player:getPose() == "CROUCHING" then
           c.boardHitbox:setRot(vec(0, -player:getRot().y, 0)):setPos(movingHitPos * 16)
         else
           c.boardHitbox:setRot(vec(0, -math.round(player:getRot(delta).y / 22.5) * 22.5, 0)):setPos(
             math.round(movingHitPos.x * 2) * 8,
-            math.round(movingHitPos.y * 2) * 8,
+            -- Fix placing on non-full blocks
+            movingHitPos.y * 16,
             math.round(movingHitPos.z * 2) * 8
           )
         end
@@ -220,15 +225,14 @@ function events.render(delta)
             math.round((c.boardHitbox:getPos().x / 16) * 100),
             math.round((c.boardHitbox:getPos().y / 16) * 100),
             math.round((c.boardHitbox:getPos().z / 16) * 100),
-            math.round(math.fmod(c.boardHitbox:getRot().y - 90, 360))
+            math.round(math.fmod(c.boardHitbox:getRot().y - 90, 360)),
+            c.boardHitbox:getScale()[1]
           )
           isMovingBoard = false
           movingCooldown = 1
         end
       end
       -- #ENDREGION
-    else
-      break
     end
   end
 end
@@ -240,15 +244,19 @@ end
 ---@param y number
 ---@param z number
 ---@param rot number
-function pings.board(x, y, z, rot)
+function pings.board(x, y, z, rot, scale)
   -- Set the chessboard position and rotation
-  c.board:setPos(vec(x, y, z) / 100 * 16):setRot(vec(0, rot, 0))
+  c.board:setPos(vec(x, y, z) / 100 * 16):setRot(vec(0, rot, 0)):setScale(scale)
   -- Save to config
-  config:setName("Chess"):save("position", vec(x, y, z))
-  config:setName("Chess"):save("rotation", rot)
+  config:setName("Chess"):save("boardPos", vec(x, y, z))
+  config:setName("Chess"):save("boardRot", rot)
+  config:setName("Chess"):save("boardScale", scale)
+  avatar:store("boardPos", vec(x, y, z) / 100)
+  avatar:store("boardRot", rot)
+  avatar:store("boardScale", scale)
 end
 
--- Reping the chessboard position and rotation every 20 seconds
+-- Re-ping the chessboard position and rotation every 20 seconds, giving clients 5 seconds to download the avatar
 if host:isHost() then
   local repingTimer = 0
   local repingDelay = 400
@@ -259,16 +267,19 @@ if host:isHost() then
     end
     repingTimer = repingDelay
     -- Load from config
-    local chessBoardConfig = {
-      position = config:setName("Chess"):load("position") or vec(0, 0, 0),
-      rotation = config:setName("Chess"):load("rotation") or 0,
+    local chessConfig = {
+      pos = config:setName("Chess"):load("boardPos") or vec(0, 0, 0),
+      rot = config:setName("Chess"):load("boardRot") or 0,
+      -- scale = config:setName("Chess"):load("boardScale") or 0.5,
+      scale = (1 / 6) * 2, -- Slightly smaller than this many blocks. 6 is default scale
     }
     -- Ping from values from config
     pings.board(
-      chessBoardConfig.position.x,
-      chessBoardConfig.position.y,
-      chessBoardConfig.position.z,
-      chessBoardConfig.rotation
+      chessConfig.pos.x,
+      chessConfig.pos.y,
+      chessConfig.pos.z,
+      chessConfig.rot,
+      chessConfig.scale
     )
   end
 end
