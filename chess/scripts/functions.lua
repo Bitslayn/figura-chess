@@ -105,6 +105,7 @@ function pings.move(x, z, dx, dz)
       print("Pawn promoting!")
     end
   end
+  selected = vec(0, 0, 0)
 end
 
 ---@param x number?

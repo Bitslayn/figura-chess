@@ -82,10 +82,10 @@ function events.tick()
       end
       -- Piece moving/selection logic
       if player:getSwingTime() == 1 and (hitbox.x or hitbox.z) then
-        if selected and not chessIndex[string.char(hitbox.x + 64)][hitbox.z] or chessPieces[chessIndex[string.char(hitbox.x + 64)][hitbox.z]].color ~= colorTurn then
+        if selected ~= vec(0, 0, 0) and (not chessIndex[string.char(hitbox.x + 64)][hitbox.z] or chessPieces[chessIndex[string.char(hitbox.x + 64)][hitbox.z]].color ~= colorTurn) then
           -- Run if there's a piece selected, and the highlighted space is either an enemy piece or empty
           pings.move(selected.x, selected.z, hitbox.x, hitbox.z)
-        elseif chessPieces[chessIndex[string.char(hitbox.x + 64)][hitbox.z]].color == colorTurn then
+        elseif chessPieces[chessIndex[string.char(hitbox.x + 64)][hitbox.z]] and chessPieces[chessIndex[string.char(hitbox.x + 64)][hitbox.z]].color == colorTurn then
           -- Run if highlighting a friendly piece
           if hitbox.x == selected.x and hitbox.z == selected.z then
             -- If the selected piece is selected twice, deselect
