@@ -123,118 +123,121 @@ function events.tick()
 end
 
 -- Render event for raycasting and hitbox position
-function events.render(delta)
-  for _, player in pairs(world:getPlayers()) do
-    -- Checks if host
-    if player:getName() == client:getViewer():getName() and player:getName() == "Bitslayn" then
-      -- #REGION Raycast
-      local isHovering = false
+if host:isHost() then -- Temporary until this is something anyone can do
+  function events.render(delta)
+    -- for _, player in pairs(world:getPlayers()) do
+      -- Checks if host
+      -- if player:getName() == client:getViewer():getName() and player:getName() == "Bitslayn" then
+        -- #REGION Raycast
+        local isHovering = false
 
-      local boardPos = c.board:getPos() / 16
-      local boardAngle = c.board:getRot()
-      local boardScale = c.board:getScale()[1]
+        local boardPos = c.board:getPos() / 16
+        local boardAngle = c.board:getRot()
+        local boardScale = c.board:getScale()[1]
 
-      local eyePos = player:getPos(delta) + vec(0, player:getEyeHeight(), 0)
-      local eyeEnd = eyePos + (player:getLookDir() * 4.5)
+        local eyePos = player:getPos(delta) + vec(0, player:getEyeHeight(), 0)
+        local eyeEnd = eyePos + (player:getLookDir() * 4.5)
 
-      -- Absolute board corner coordinates
-      local boardCorners = {
-        vectors.rotateAroundAxis(-boardAngle.y, vec(-2.25, 0, -2.25), vec(0, 1, 0)), -- Lower-left
-        vectors.rotateAroundAxis(-boardAngle.y, vec(2.25, 0, -2.25), vec(0, 1, 0)),  -- Upper-left
-        vectors.rotateAroundAxis(-boardAngle.y, vec(2.25, 0, 2.25), vec(0, 1, 0)),   -- Upper-right
-        vectors.rotateAroundAxis(-boardAngle.y, vec(-2.25, 0, 2.25), vec(0, 1, 0)),  -- Lower-right
-      }
+        -- Absolute board corner coordinates
+        local boardCorners = {
+          vectors.rotateAroundAxis(-boardAngle.y, vec(-2.25, 0, -2.25), vec(0, 1, 0)), -- Lower-left
+          vectors.rotateAroundAxis(-boardAngle.y, vec(2.25, 0, -2.25), vec(0, 1, 0)), -- Upper-left
+          vectors.rotateAroundAxis(-boardAngle.y, vec(2.25, 0, 2.25), vec(0, 1, 0)), -- Upper-right
+          vectors.rotateAroundAxis(-boardAngle.y, vec(-2.25, 0, 2.25), vec(0, 1, 0)), -- Lower-right
+        }
 
-      -- Extremes for aabb bounding box
-      local maxZ, minX, minZ, maxX =
-          math.max(boardCorners[1].z, boardCorners[2].z, boardCorners[3].z, boardCorners[4].z), -- Up
-          math.min(boardCorners[1].x, boardCorners[2].x, boardCorners[3].x, boardCorners[4].x), -- Left
-          math.min(boardCorners[1].z, boardCorners[2].z, boardCorners[3].z, boardCorners[4].z), -- Down
-          math.max(boardCorners[1].x, boardCorners[2].x, boardCorners[3].x, boardCorners[4].x)  -- Right
+        -- Extremes for aabb bounding box
+        local maxZ, minX, minZ, maxX =
+            math.max(boardCorners[1].z, boardCorners[2].z, boardCorners[3].z, boardCorners[4].z), -- Up
+            math.min(boardCorners[1].x, boardCorners[2].x, boardCorners[3].x, boardCorners[4].x), -- Left
+            math.min(boardCorners[1].z, boardCorners[2].z, boardCorners[3].z, boardCorners[4].z), -- Down
+            math.max(boardCorners[1].x, boardCorners[2].x, boardCorners[3].x, boardCorners[4].x) -- Right
 
-      -- aabb bounding box
-      local hitLocation = {
-        {
-          (vec(minX, 0, minZ) * boardScale) + boardPos,
-          (vec(maxX, 0, maxZ) * boardScale) + boardPos,
-        },
-      }
-      local _, hitPos = raycast:aabb(eyePos, eyeEnd, hitLocation)
+        -- aabb bounding box
+        local hitLocation = {
+          {
+            (vec(minX, 0, minZ) * boardScale) + boardPos,
+            (vec(maxX, 0, maxZ) * boardScale) + boardPos,
+          },
+        }
+        local _, hitPos = raycast:aabb(eyePos, eyeEnd, hitLocation)
 
-      local localHitPos
-      -- local x, z
-      if hitPos then
-        localHitPos = vectors.rotateAroundAxis(-boardAngle.y, hitPos - boardPos, vec(0, 1, 0))
-        -- Wtf was this for?
-        -- x, z = math.floor((localHitPos.x + 2) * 2) + 1, math.floor((localHitPos.z + 2) * 2) + 1
-      end
-
-      if localHitPos then
-        -- Detect if player is looking at an entity
-        local entity = player:getTargetedEntity()
-        -- Detect if player is hovering over the edges
-        if ((-2.25 * boardScale < localHitPos.x and localHitPos.x < -2 * boardScale) or
-              (2 * boardScale < localHitPos.x and localHitPos.x < 2.25 * boardScale) or
-              (-2.25 * boardScale < localHitPos.z and localHitPos.z < -2 * boardScale) or
-              (2 * boardScale < localHitPos.z and localHitPos.z < 2.25 * boardScale)) and not entity then
-          isHovering = true
-        else
-          isHovering = false
+        local localHitPos
+        -- local x, z
+        if hitPos then
+          localHitPos = vectors.rotateAroundAxis(-boardAngle.y, hitPos - boardPos, vec(0, 1, 0))
+          -- Wtf was this for?
+          -- x, z = math.floor((localHitPos.x + 2) * 2) + 1, math.floor((localHitPos.z + 2) * 2) + 1
         end
-      end
-      -- #ENDREGION
 
-      -- #REGION Board moving
-      -- I need to write this better, it fixed *something* iirc
-      if isMovingBoard == nil or canPlaceBoard == nil then
-        isMovingBoard = false
-        canPlaceBoard = false
-      end
-      if isMovingBoard == false then
-        c.boardHitbox:setVisible(isHovering)
-        c.boardHitbox:setPos(c.board:getPos()):setRot(c.board:getRot()):setScale(c.board:getScale())
-        if player:getSwingTime() == 1 and player:getPose() == "CROUCHING" and isHovering and movingCooldown == 0 then
-          isMovingBoard = true
-          movingCooldown = 1
+        if localHitPos then
+          -- Detect if player is looking at an entity
+          local entity = player:getTargetedEntity()
+          -- Detect if player is hovering over the edges
+          if ((-2.25 * boardScale < localHitPos.x and localHitPos.x < -2 * boardScale) or
+                (2 * boardScale < localHitPos.x and localHitPos.x < 2.25 * boardScale) or
+                (-2.25 * boardScale < localHitPos.z and localHitPos.z < -2 * boardScale) or
+                (2 * boardScale < localHitPos.z and localHitPos.z < 2.25 * boardScale)) and not entity then
+            isHovering = true
+          else
+            isHovering = false
+          end
         end
-      else
-        c.boardHitbox:setVisible(true)
-        local _, movingHitPos, side = raycast:block(
-          eyePos, eyePos + (player:getLookDir() * 16),
-          "OUTLINE", "NONE"
-        )
-        if player:getPose() == "CROUCHING" then
-          c.boardHitbox:setRot(vec(0, -player:getRot().y, 0)):setPos(movingHitPos * 16)
-        else
-          c.boardHitbox:setRot(vec(0, -math.round(player:getRot(delta).y / 22.5) * 22.5, 0)):setPos(
-            math.round(movingHitPos.x * 2) * 8,
-            -- Fix placing on non-full blocks
-            movingHitPos.y * 16,
-            math.round(movingHitPos.z * 2) * 8
-          )
-        end
-        if side == "up" then
-          c.boardHitbox:setColor(1, 1, 1)
-          canPlaceBoard = true
-        else
-          c.boardHitbox:setColor(1, 0, 0)
+        -- #ENDREGION
+
+        -- #REGION Board moving
+        -- I need to write this better, it fixed *something* iirc
+        if isMovingBoard == nil or canPlaceBoard == nil then
+          isMovingBoard = false
           canPlaceBoard = false
         end
-        if player:getSwingTime() == 1 and canPlaceBoard == true and movingCooldown == 0 then
-          pings.board(
-            math.round((c.boardHitbox:getPos().x / 16) * 100),
-            math.round((c.boardHitbox:getPos().y / 16) * 100),
-            math.round((c.boardHitbox:getPos().z / 16) * 100),
-            math.round(math.fmod(c.boardHitbox:getRot().y - 90, 360)),
-            c.boardHitbox:getScale()[1]
+        if isMovingBoard == false then
+          c.boardHitbox:setVisible(isHovering)
+          c.boardHitbox:setPos(c.board:getPos()):setRot(c.board:getRot()):setScale(c.board:getScale())
+          if player:getSwingTime() == 1 and player:getPose() == "CROUCHING" and isHovering and movingCooldown == 0 then
+            isMovingBoard = true
+            movingCooldown = 1
+          end
+        else
+          c.boardHitbox:setVisible(true)
+          local _, movingHitPos, side = raycast:block(
+            eyePos, eyePos + (player:getLookDir() * 16),
+            "OUTLINE", "NONE"
           )
-          isMovingBoard = false
-          movingCooldown = 1
+          if player:getPose() == "CROUCHING" then
+            c.boardHitbox:setRot(vec(0, -player:getRot().y, 0)):setPos(movingHitPos * 16)
+          else
+            c.boardHitbox:setRot(vec(0, -math.round(player:getRot(delta).y / 22.5) * 22.5, 0))
+                :setPos(
+                  math.round(movingHitPos.x * 2) * 8,
+                  -- Fix placing on non-full blocks
+                  movingHitPos.y * 16,
+                  math.round(movingHitPos.z * 2) * 8
+                )
+          end
+          if side == "up" then
+            c.boardHitbox:setColor(1, 1, 1)
+            canPlaceBoard = true
+          else
+            c.boardHitbox:setColor(1, 0, 0)
+            canPlaceBoard = false
+          end
+          if player:getSwingTime() == 1 and canPlaceBoard == true and movingCooldown == 0 then
+            pings.board(
+              math.round((c.boardHitbox:getPos().x / 16) * 100),
+              math.round((c.boardHitbox:getPos().y / 16) * 100),
+              math.round((c.boardHitbox:getPos().z / 16) * 100),
+              math.round(math.fmod(c.boardHitbox:getRot().y - 90, 360)),
+              c.boardHitbox:getScale()[1]
+            )
+            isMovingBoard = false
+            movingCooldown = 1
+          end
         end
+        -- #ENDREGION
       end
-      -- #ENDREGION
-    end
-  end
+    -- end
+  -- end
 end
 
 -- #REGION Ping
@@ -271,7 +274,7 @@ if host:isHost() then
       pos = config:setName("Chess"):load("boardPos") or vec(0, 0, 0),
       rot = config:setName("Chess"):load("boardRot") or 0,
       -- scale = config:setName("Chess"):load("boardScale") or 0.5,
-      scale = (1 / 6) * 2, -- Slightly smaller than this many blocks. 6 is default scale
+      scale = (1 / 6) * 4, -- 6 is default scale
     }
     -- Ping from values from config
     pings.board(

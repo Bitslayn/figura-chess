@@ -4,7 +4,7 @@ require("chess.scripts.hitbox")
 A, B, C, D, E, F, G, H = "A", "B", "C", "D", "E", "F", "G", "H"
 
 pieceNotation = {
-  pawn = { symbol = "♟", letter = "" },
+  pawn = { symbol = "", letter = "" },
   rook = { symbol = "♜", letter = "R" },
   knight = { symbol = "♞", letter = "N" },
   bishop = { symbol = "♝", letter = "B" },
